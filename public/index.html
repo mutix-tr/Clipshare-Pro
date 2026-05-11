@@ -13,6 +13,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
         .glass { background: rgba(255,255,255,0.06); backdrop-filter: blur(20px); }
+        .card-hover:hover { transform: translateY(-6px); }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen">
@@ -25,10 +26,7 @@
             <h1 class="text-4xl font-bold tracking-tighter">ClipShare <span class="text-cyan-400 text-2xl">Pro</span></h1>
         </div>
         <div class="flex items-center gap-4">
-            <button onclick="installPWA()" id="installBtn" 
-                    class="hidden px-5 py-2.5 bg-white text-zinc-900 rounded-2xl font-semibold text-sm hover:bg-cyan-400 hover:text-zinc-950 transition-all">
-                📲 Yükle
-            </button>
+            <button onclick="installPWA()" id="installBtn" class="hidden px-5 py-2.5 bg-white text-zinc-900 rounded-2xl font-semibold text-sm hover:bg-cyan-400">📲 Yükle</button>
             <button onclick="toggleTheme()" id="themeBtn" class="w-10 h-10 bg-zinc-900 rounded-2xl text-xl">☀️</button>
         </div>
     </div>
@@ -41,7 +39,7 @@
         </div>
 
         <div class="grid md:grid-cols-2 gap-6">
-            <div onclick="showCreateModal()" class="glass border border-zinc-700 hover:border-cyan-400 rounded-3xl p-10 cursor-pointer">
+            <div onclick="showCreateModal()" class="glass border border-zinc-700 hover:border-cyan-400 rounded-3xl p-10 cursor-pointer card-hover">
                 <div class="text-cyan-400 text-sm mb-2">✦ YENİ</div>
                 <h3 class="text-3xl font-semibold">Yeni Oda Oluştur</h3>
                 <p class="text-zinc-400 mt-2">İsim + Şifre ile</p>
@@ -56,7 +54,7 @@
         </div>
     </div>
 
-    <!-- ROOM -->
+    <!-- ROOM SCREEN -->
     <div id="roomScreen" class="hidden">
         <div class="flex justify-between items-center mb-8 bg-zinc-900 border border-zinc-700 rounded-3xl px-8 py-5">
             <div>
@@ -72,7 +70,6 @@
 
         <div id="currentContent" class="glass border border-zinc-700 rounded-3xl p-12 min-h-[280px] flex items-center justify-center text-center"></div>
 
-        <!-- Paylaşım Alanı -->
         <div class="mt-8 grid grid-cols-1 lg:grid-cols-5 gap-6">
             <div class="lg:col-span-3">
                 <textarea id="textInput" rows="5" class="w-full bg-zinc-900 border border-zinc-700 rounded-3xl p-6 outline-none" placeholder="Metin yaz veya yapıştır..."></textarea>
@@ -138,6 +135,7 @@
     function toggleTheme() {
         isDark = !isDark;
         document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
     }
 
     function showCreateModal() { document.getElementById('createModal').classList.remove('hidden'); }
@@ -145,40 +143,57 @@
     function showSettingsModal() { document.getElementById('settingsModal').classList.remove('hidden'); }
     function hideSettingsModal() { document.getElementById('settingsModal').classList.add('hidden'); }
 
+    // ==================== ODA OLUŞTUR ====================
     function createRoom() {
         const name = document.getElementById('createName').value || "Yeni Oda";
+        const pass = document.getElementById('createPass').value || null;
         hideCreateModal();
 
-        // Demo modu (backend olmadan da çalışsın)
-        currentRoomId = "demo-" + Math.random().toString(36).substring(2,8);
+        socket = io();   // Gerçek bağlantı
+        socket.emit('createRoom', { roomName: name, password: pass });
+
+        socket.on('roomCreated', ({ roomId }) => {
+            currentRoomId = roomId;
+            enterRoom(roomId, name);
+        });
+    }
+
+    // ==================== ODAYA KATIL ====================
+    function joinRoom() {
+        const roomId = document.getElementById('joinRoomId').value.trim();
+        const pass = document.getElementById('joinPass').value.trim() || null;
+        if (!roomId) return alert("Oda kodu girin!");
+
+        socket = io();
+        socket.emit('joinRoom', { roomId, password: pass });
+
+        socket.on('roomJoined', (data) => {
+            currentRoomId = data.roomId;
+            enterRoom(data.roomId, data.roomName || "Oda");
+        });
+    }
+
+    function enterRoom(roomId, name) {
         document.getElementById('landing').classList.add('hidden');
         document.getElementById('roomScreen').classList.remove('hidden');
         document.getElementById('roomName').textContent = name;
-        document.getElementById('roomId').textContent = currentRoomId;
-    }
-
-    function joinRoom() {
-        const roomId = document.getElementById('joinRoomId').value.trim();
-        if (!roomId) return alert("Oda kodu girin!");
-        
-        currentRoomId = roomId;
-        document.getElementById('landing').classList.add('hidden');
-        document.getElementById('roomScreen').classList.remove('hidden');
-        document.getElementById('roomName').textContent = "Katılınan Oda";
         document.getElementById('roomId').textContent = roomId;
+
+        socket.on('newContent', renderCurrent);
     }
 
     function sendText() {
         const text = document.getElementById('textInput').value.trim();
-        if (!text) return;
-        renderCurrent({type: 'text', value: text});
-        document.getElementById('textInput').value = '';
+        if (text && currentRoomId) {
+            socket.emit('share', { roomId: currentRoomId, type: 'text', value: text });
+            document.getElementById('textInput').value = '';
+        }
     }
 
     async function pasteAndSend() {
         try {
             const text = await navigator.clipboard.readText();
-            if (text) renderCurrent({type: 'text', value: text});
+            if (text && currentRoomId) socket.emit('share', { roomId: currentRoomId, type: 'text', value: text });
         } catch(e) { alert("Panoya erişilemedi"); }
     }
 
@@ -186,42 +201,46 @@
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = () => renderCurrent({type: 'image', value: reader.result});
+        reader.onload = () => {
+            socket.emit('share', { roomId: currentRoomId, type: 'image', value: reader.result });
+        };
         reader.readAsDataURL(file);
     }
 
     function renderCurrent(data) {
         const el = document.getElementById('currentContent');
         if (data.type === 'text') {
-            el.innerHTML = `<p class="text-2xl leading-relaxed">${data.value}</p>`;
+            el.innerHTML = `<p class="text-2xl leading-relaxed max-w-prose">${data.value}</p>`;
         } else {
-            el.innerHTML = `<img src="${data.value}" class="max-h-96 rounded-3xl">`;
+            el.innerHTML = `<img src="${data.value}" class="max-h-96 rounded-3xl mx-auto">`;
         }
     }
 
     function copyRoomLink() {
-        navigator.clipboard.writeText(window.location.origin + "?room=" + currentRoomId);
-        alert("✅ Link kopyalandı!");
+        navigator.clipboard.writeText(`\( {window.location.origin}?room= \){currentRoomId}`);
+        alert("✅ Oda linki kopyalandı!");
     }
 
     function saveSettings() {
         const newName = document.getElementById('settingsName').value;
-        if (newName) document.getElementById('roomName').textContent = newName;
+        if (newName && currentRoomId) {
+            socket.emit('updateRoomSettings', { roomId: currentRoomId, newName });
+            document.getElementById('roomName').textContent = newName;
+        }
         hideSettingsModal();
-        alert("✅ Ayarlar kaydedildi");
     }
 
     function leaveRoom() {
-        if (confirm("Çıkmak istediğinize emin misiniz?")) location.reload();
+        if (confirm("Odadan çıkmak istediğinize emin misiniz?")) location.reload();
     }
 
-    // Tema yükle
+    // Tema yükleme
     window.onload = () => {
         if (localStorage.getItem('theme') === 'light') {
             isDark = false;
             document.getElementById('themeBtn').textContent = '🌙';
         }
-        console.log('%c✅ ClipShare Pro düzgün çalıştırıldı!', 'color:#22d3ee;font-weight:bold');
+        console.log('%c✅ ClipShare Pro (Demo modu kaldırıldı) - Hazır!', 'color:#22d3ee; font-weight:bold');
     };
 </script>
 </body>
