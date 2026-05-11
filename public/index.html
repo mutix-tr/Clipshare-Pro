@@ -9,13 +9,23 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#22d3ee">
 
+    <!-- Favicon & App Icons -->
+    <link rel="icon" type="image/png" href="https://i.ibb.co/yFCRDybp/mh71jsdb.png">
+    <link rel="apple-touch-icon" href="https://i.ibb.co/yFCRDybp/mh71jsdb.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="https://i.ibb.co/yFCRDybp/mh71jsdb.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="https://i.ibb.co/yFCRDybp/mh71jsdb.png">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ClipShare Pro">
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
         .glass { background: rgba(255,255,255,0.06); backdrop-filter: blur(20px); }
     </style>
 </head>
-<body class="bg-zinc-950 text-zinc-100 min-h-screen">
+<body class="bg-zinc-950 text-zinc-100 min-h-screen transition-colors">
 <div class="max-w-4xl mx-auto px-6 py-8">
 
     <!-- HEADER -->
@@ -25,14 +35,12 @@
             <h1 class="text-4xl font-bold tracking-tighter">ClipShare <span class="text-cyan-400">Pro</span></h1>
         </div>
         <div class="flex items-center gap-4">
-            <!-- PWA Butonu - Sadece PWA değilse görünür -->
-            <button onclick="installPWA()" id="installBtn"
+            <button onclick="installPWA()" id="installBtn" 
                     class="hidden px-6 py-3 bg-white text-zinc-900 rounded-2xl font-semibold hover:bg-cyan-400 hover:text-zinc-950 flex items-center gap-2">
                 📲 <span class="hidden sm:inline">Uygulamayı Yükle</span>
             </button>
-            
             <button onclick="toggleTheme()" id="themeBtn" 
-                    class="w-10 h-10 bg-zinc-900 hover:bg-zinc-800 rounded-2xl text-xl transition-all">
+                    class="w-11 h-11 bg-zinc-900 hover:bg-zinc-800 rounded-2xl text-2xl transition-all">
                 ☀️
             </button>
         </div>
@@ -129,18 +137,13 @@
     let isDark = true;
     let history = [];
 
-    // ==================== PWA KONTROLÜ ====================
     function isRunningAsPWA() {
-        return window.matchMedia('(display-mode: standalone)').matches || 
-               window.navigator.standalone === true;
+        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     }
 
-    // PWA Butonunu sadece PWA değilse göster
     window.addEventListener('beforeinstallprompt', e => {
         deferredPrompt = e;
-        if (!isRunningAsPWA()) {
-            document.getElementById('installBtn').classList.remove('hidden');
-        }
+        if (!isRunningAsPWA()) document.getElementById('installBtn').classList.remove('hidden');
     });
 
     async function installPWA() {
@@ -148,11 +151,9 @@
             deferredPrompt.prompt();
             await deferredPrompt.userChoice;
             deferredPrompt = null;
-            document.getElementById('installBtn').classList.add('hidden');
         }
     }
 
-    // ==================== TEMA ====================
     function toggleTheme() {
         isDark = !isDark;
         if (isDark) {
@@ -165,7 +166,6 @@
         localStorage.setItem('theme', isDark ? 'dark' : 'light');
     }
 
-    // ==================== Diğer Fonksiyonlar ====================
     function showCreateModal() { document.getElementById('createModal').classList.remove('hidden'); }
     function hideCreateModal() { document.getElementById('createModal').classList.add('hidden'); }
     function showSettingsModal() { document.getElementById('settingsModal').classList.remove('hidden'); }
@@ -214,8 +214,7 @@
         } else {
             el.innerHTML = `
                 <img src="${data.value}" class="max-h-96 rounded-3xl mx-auto">
-                <a href="${data.value}" download="clipshare.jpg" 
-                   class="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-white text-zinc-900 rounded-2xl font-medium">
+                <a href="${data.value}" download="clipshare.jpg" class="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-white text-zinc-900 rounded-2xl font-medium">
                     ⬇️ Görüntüyü İndir
                 </a>
             `;
@@ -226,11 +225,9 @@
         const container = document.getElementById('historyList');
         container.innerHTML = history.map(item => `
             <div class="glass border border-zinc-700 rounded-3xl p-5 flex gap-4">
-                ${item.type === 'text' ? 
-                    `<p class="flex-1">${item.value}</p>` : 
-                    `<img src="${item.value}" class="w-20 h-20 object-cover rounded-2xl">`}
-                ${item.type === 'image' ? 
-                    `<a href="${item.value}" download class="self-center ml-auto text-cyan-400">⬇️ İndir</a>` : ''}
+                \( {item.type === 'text' ? `<p class="flex-1"> \){item.value}</p>` : 
+                `<img src="${item.value}" class="w-20 h-20 object-cover rounded-2xl">`}
+                \( {item.type === 'image' ? `<a href=" \){item.value}" download class="self-center ml-auto text-cyan-400">⬇️ İndir</a>` : ''}
             </div>
         `).join('');
     }
@@ -271,21 +268,21 @@
         if (confirm("Çıkmak istediğinize emin misiniz?")) location.reload();
     }
 
-    // ==================== BAŞLANGIÇ ====================
     window.onload = () => {
-        // Tema yükle
+        // Tema yükleme
         if (localStorage.getItem('theme') === 'light') {
             isDark = false;
             document.documentElement.classList.remove('dark');
             document.getElementById('themeBtn').innerHTML = '🌙';
+        } else {
+            isDark = true;
+            document.documentElement.classList.add('dark');
+            document.getElementById('themeBtn').innerHTML = '☀️';
         }
 
-        // Eğer PWA olarak çalışıyorsa yükle butonunu gizle
-        if (isRunningAsPWA()) {
-            document.getElementById('installBtn').classList.add('hidden');
-        }
+        if (isRunningAsPWA()) document.getElementById('installBtn').classList.add('hidden');
 
-        console.log('%c✅ ClipShare Pro - Tüm düzeltmeler uygulandı', 'color:#22d3ee; font-weight:bold');
+        console.log('%c✅ ClipShare Pro Tam Versiyon Yüklendi', 'color:#22d3ee; font-weight:bold');
     };
 </script>
 </body>
