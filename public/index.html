@@ -6,10 +6,10 @@
     <title>ClipShare Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#22d3ee">
 
-    <!-- Favicon & App Icons -->
+    <!-- Favicon & App Icons (Senin Logon) -->
     <link rel="icon" type="image/png" href="https://i.ibb.co/yFCRDybp/mh71jsdb.png">
     <link rel="apple-touch-icon" href="https://i.ibb.co/yFCRDybp/mh71jsdb.png">
     <link rel="apple-touch-icon" sizes="192x192" href="https://i.ibb.co/yFCRDybp/mh71jsdb.png">
@@ -35,14 +35,12 @@
             <h1 class="text-4xl font-bold tracking-tighter">ClipShare <span class="text-cyan-400">Pro</span></h1>
         </div>
         <div class="flex items-center gap-4">
-            <button onclick="installPWA()" id="installBtn" 
+            <button onclick="installPWA()" id="installBtn"
                     class="hidden px-6 py-3 bg-white text-zinc-900 rounded-2xl font-semibold hover:bg-cyan-400 hover:text-zinc-950 flex items-center gap-2">
                 📲 <span class="hidden sm:inline">Uygulamayı Yükle</span>
             </button>
-            <button onclick="toggleTheme()" id="themeBtn" 
-                    class="w-11 h-11 bg-zinc-900 hover:bg-zinc-800 rounded-2xl text-2xl transition-all">
-                ☀️
-            </button>
+            <button onclick="toggleTheme()" id="themeBtn"
+                    class="w-11 h-11 bg-zinc-900 hover:bg-zinc-800 rounded-2xl text-2xl transition-all">☀️</button>
         </div>
     </div>
 
@@ -97,7 +95,6 @@
             </div>
         </div>
 
-        <!-- TARİHÇE -->
         <div class="mt-12">
             <h3 class="text-xl font-medium mb-6">Paylaşım Tarihiçesi</h3>
             <div id="historyList" class="space-y-4 max-h-[420px] overflow-y-auto"></div>
@@ -135,7 +132,7 @@
     let currentRoomId = null;
     let deferredPrompt = null;
     let isDark = true;
-    let history = [];
+    let historyData = [];
 
     function isRunningAsPWA() {
         return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -151,6 +148,7 @@
             deferredPrompt.prompt();
             await deferredPrompt.userChoice;
             deferredPrompt = null;
+            document.getElementById('installBtn').classList.add('hidden');
         }
     }
 
@@ -201,8 +199,8 @@
 
         socket.on('newContent', (data) => {
             renderCurrent(data);
-            history.unshift(data);
-            if (history.length > 30) history.pop();
+            historyData.unshift(data);
+            if (historyData.length > 30) historyData.pop();
             renderHistory();
         });
     }
@@ -214,20 +212,17 @@
         } else {
             el.innerHTML = `
                 <img src="${data.value}" class="max-h-96 rounded-3xl mx-auto">
-                <a href="${data.value}" download="clipshare.jpg" class="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-white text-zinc-900 rounded-2xl font-medium">
-                    ⬇️ Görüntüyü İndir
-                </a>
+                <a href="${data.value}" download="clipshare.jpg" class="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-white text-zinc-900 rounded-2xl font-medium">⬇️ Görüntüyü İndir</a>
             `;
         }
     }
 
     function renderHistory() {
         const container = document.getElementById('historyList');
-        container.innerHTML = history.map(item => `
-            <div class="glass border border-zinc-700 rounded-3xl p-5 flex gap-4">
-                \( {item.type === 'text' ? `<p class="flex-1"> \){item.value}</p>` : 
-                `<img src="${item.value}" class="w-20 h-20 object-cover rounded-2xl">`}
-                \( {item.type === 'image' ? `<a href=" \){item.value}" download class="self-center ml-auto text-cyan-400">⬇️ İndir</a>` : ''}
+        container.innerHTML = historyData.map(item => `
+            <div class="glass border border-zinc-700 rounded-3xl p-5 flex gap-4 items-center">
+                \( {item.type === 'text' ? `<p class="flex-1"> \){item.value}</p>` : `<img src="${item.value}" class="w-20 h-20 object-cover rounded-2xl">`}
+                \( {item.type === 'image' ? `<a href=" \){item.value}" download class="ml-auto text-cyan-400 font-medium">⬇️ İndir</a>` : ''}
             </div>
         `).join('');
     }
@@ -269,8 +264,8 @@
     }
 
     window.onload = () => {
-        // Tema yükleme
-        if (localStorage.getItem('theme') === 'light') {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light') {
             isDark = false;
             document.documentElement.classList.remove('dark');
             document.getElementById('themeBtn').innerHTML = '🌙';
@@ -282,7 +277,7 @@
 
         if (isRunningAsPWA()) document.getElementById('installBtn').classList.add('hidden');
 
-        console.log('%c✅ ClipShare Pro Tam Versiyon Yüklendi', 'color:#22d3ee; font-weight:bold');
+        console.log('%c✅ ClipShare Pro - Tam kod yüklendi (Tema + Favicon + PWA)', 'color:#22d3ee; font-weight:bold');
     };
 </script>
 </body>
