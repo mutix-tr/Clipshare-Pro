@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClipShare Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
+    <link rel="manifest" href="/manifest.json">
+    <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');</style>
+</head>
+<body class="bg-zinc-950 text-white min-h-screen">
+<div class="max-w-5xl mx-auto p-6">
+
+    <!-- LANDING -->
+    <div id="landing">
+        <h1 class="text-6xl font-bold text-center my-16">ClipShare Pro</h1>
+        <div class="grid md:grid-cols-2 gap-6">
+            <div onclick="createRoom()" class="bg-zinc-900 hover:bg-zinc-800 p-10 rounded-3xl cursor-pointer border border-transparent hover:border-cyan-400 transition-all">
+                <h3 class="text-3xl font-semibold">Yeni Oda Oluştur</h3>
+                <p class="text-zinc-400 mt-3">Kısa kod + şifre + isim</p>
+            </div>
+            <div class="bg-zinc-900 p-10 rounded-3xl">
+                <input id="roomIdInput" placeholder="Oda kodu" class="w-full bg-zinc-800 px-6 py-5 rounded-2xl mb-4 text-lg">
+                <input id="passInput" type="password" placeholder="Şifre" class="w-full bg-zinc-800 px-6 py-5 rounded-2xl mb-4">
+                <button onclick="joinRoom()" class="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-bold py-5 rounded-2xl text-lg">Katıl</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ROOM -->
+    <div id="roomScreen" class="hidden">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <span id="roomName" class="text-3xl font-semibold"></span>
+                <span id="roomId" class="font-mono text-sm text-zinc-500 ml-4"></span>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="showSettings()" class="px-5 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl">⚙️ Ayarlar</button>
+                <button onclick="leaveRoom()" class="px-5 py-2 text-red-400 hover:bg-zinc-900 rounded-2xl">Çıkış</button>
+            </div>
+        </div>
+
+        <div id="currentContent" class="bg-zinc-900 rounded-3xl p-10 min-h-80 text-center mb-10"></div>
+
+        <textarea id="textInput" class="w-full h-40 bg-zinc-900 p-6 rounded-3xl text-lg" placeholder="Metin yaz veya yapıştır..."></textarea>
+        
+        <div class="grid grid-cols-3 gap-4 mt-6">
+            <button onclick="sendText()" class="bg-cyan-500 text-black font-bold py-5 rounded-3xl">🚀 Paylaş</button>
+            <button onclick="pasteAndSend()" class="border border-zinc-700 hover:border-white py-5 rounded-3xl">📋 Panodan</button>
+            <button onclick="document.getElementById('fileInput').click()" class="border border-zinc-700 hover:border-white py-5 rounded-3xl">📸 Görsel</button>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="sendImage(event)">
+
+        <div id="history" class="mt-12 space-y-4"></div>
+    </div>
+</div>
+
+<script>
+    let socket, currentRoomId = null;
+
+    // PWA & Bildirim izni
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+    function requestNotification() {
+        if (Notification.permission === "default") Notification.requestPermission();
+    }
+
+    function createRoom() {
+        const name = prompt("Oda adı:", "Benim Panom") || "Yeni Oda";
+        const pass = prompt("Şifre (boş = şifresiz):") || null;
+        socket = io();
+        socket.emit('createRoom', { roomName: name, password: pass });
+        
+        socket.on('roomCreated', ({ roomId }) => {
+            currentRoomId = roomId;
+            enterRoom(roomId, name);
+        });
+    }
+
+    function joinRoom() {
+        const roomId = document.getElementById('roomIdInput').value.trim();
+        const pass = document.getElementById('passInput').value.trim() || null;
+        socket = io();
+        socket.emit('joinRoom', { roomId, password: pass });
+        socket.on('roomJoined', (data) => {
+            currentRoomId = data.roomId;
+            enterRoom(data.roomId, data.roomName);
+        });
+    }
+
+    function enterRoom(roomId, name) {
+        document.getElementById('landing').classList.add('hidden');
+        document.getElementById('roomScreen').classList.remove('hidden');
+        document.getElementById('roomName').textContent = name;
+        document.getElementById('roomId').textContent = roomId;
+
+        requestNotification();
+
+        socket.on('newContent', renderCurrent);
+        socket.on('historyUpdate', renderHistory);
+        socket.on('roomSettingsUpdated', (data) => {
+            document.getElementById('roomName').textContent = data.name;
+        });
+    }
+
+    function sendText() {
+        const text = document.getElementById('textInput').value.trim();
+        if (text) socket.emit('share', { roomId: currentRoomId, type: 'text', value: text });
+        document.getElementById('textInput').value = '';
+    }
+
+    async function pasteAndSend() {
+        const text = await navigator.clipboard.readText();
+        if (text) socket.emit('share', { roomId: currentRoomId, type: 'text', value: text });
+    }
+
+    function sendImage(e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = () => socket.emit('share', { roomId: currentRoomId, type: 'image', value: reader.result });
+        reader.readAsDataURL(file);
+    }
+
+    function renderCurrent(data) {
+        const el = document.getElementById('currentContent');
+        if (data.type === 'text') {
+            el.innerHTML = `<p class="text-2xl whitespace-pre-wrap">${data.value}</p>`;
+            if (Notification.permission === "granted") new Notification("Yeni Metin", { body: data.value.substring(0, 60) });
+        } else {
+            el.innerHTML = `<img src="${data.value}" class="max-h-96 mx-auto rounded-3xl">`;
+        }
+    }
+
+    function renderHistory(history) {
+        // Basit render - istersen genişlet
+        console.log(history);
+    }
+
+    function showSettings() {
+        const newName = prompt("Yeni oda adı:", document.getElementById('roomName').textContent);
+        const newPass = prompt("Yeni şifre (boş = şifresiz):");
+        if (newName || newPass !== null) {
+            socket.emit('updateRoomSettings', { roomId: currentRoomId, newName, newPassword: newPass || null });
+        }
+    }
+
+    function leaveRoom() {
+        location.reload();
+    }
+</script>
+</body>
+</html>
