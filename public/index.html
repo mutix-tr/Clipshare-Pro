@@ -6,15 +6,17 @@
     <title>ClipShare Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.socket.io/4.8.0/socket.io.min.js"></script>
-    
+    <link rel="manifest" href="/manifest.json">
+
     <script>
         tailwind.config = { 
             darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        darkBg: '#09090b', // Çok koyu zemin
-                        darkCard: '#121214' // Kartlar için hafif ton farkı
+                        black: '#000000',
+                        darkCard: '#0a0a0a',
+                        darkBorder: '#1a1a1a'
                     }
                 }
             }
@@ -22,32 +24,41 @@
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; transition: background-color 0.4s ease; }
         
-        /* Geçiş ve Efektler */
-        .glass { transition: background 0.4s, border-color 0.4s; }
+        /* GERÇEK KOYU TEMA (PURE BLACK) */
+        .dark body { background-color: #000000; color: #ffffff; }
+        .dark .glass { 
+            background: #050505; 
+            border: 1px solid #141414; 
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.8);
+        }
+        .dark input, .dark textarea { 
+            background-color: #080808; 
+            border-color: #141414; 
+            color: #ffffff; 
+        }
+        .dark input:focus, .dark textarea:focus { 
+            border-color: #22d3ee; 
+            background-color: #000000; 
+        }
 
-        /* KARANLIK MOD (İyileştirilmiş) */
-        .dark body { background-color: #020203; color: #f4f4f5; }
-        .dark .glass { background: rgba(15, 15, 18, 0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); }
-        .dark input, .dark textarea { background-color: #0c0c0e; border-color: #1f1f23; color: #f4f4f5; }
-        .dark input:focus, .dark textarea:focus { border-color: #22d3ee; background-color: #050505; }
-
-        /* AYDINLIK MOD (İyileştirilmiş) */
+        /* AYDINLIK MOD */
         body:not(.dark) { background-color: #f8fafc; color: #0f172a; }
-        body:not(.dark) .glass { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); border: 1px solid rgba(0, 0, 0, 0.05); box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04); }
-        body:not(.dark) input, body:not(.dark) textarea { background-color: #ffffff; border-color: #e2e8f0; color: #0f172a; }
-        body:not(.dark) input:focus, body:not(.dark) textarea:focus { border-color: #06b6d4; }
+        body:not(.dark) .glass { 
+            background: rgba(255, 255, 255, 0.9); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(0, 0, 0, 0.05); 
+        }
 
         /* Bağlantı Durumu */
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-        .online { background-color: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.5); }
-        .offline { background-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .online { background-color: #10b981; box-shadow: 0 0 15px #10b981; }
+        .offline { background-color: #ef4444; }
 
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
-        body:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 10px; }
     </style>
 </head>
 <body class="min-h-screen">
@@ -56,106 +67,100 @@
     <!-- HEADER -->
     <div class="flex justify-between items-center mb-12">
         <div class="flex items-center gap-4">
-            <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center text-3xl shadow-xl shadow-cyan-500/20">📋</div>
+            <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center text-3xl shadow-lg">📋</div>
             <div>
-                <h1 class="text-3xl font-bold tracking-tighter leading-tight">ClipShare <span class="text-cyan-500">Pro</span></h1>
+                <h1 class="text-3xl font-black tracking-tighter leading-tight">ClipShare <span class="text-cyan-400">Pro</span></h1>
                 <div class="flex items-center gap-2">
                     <span id="connStatus" class="status-dot offline"></span>
-                    <span id="statusText" class="text-[10px] font-black uppercase tracking-widest opacity-50">Bağlanıyor...</span>
+                    <span id="statusText" class="text-[10px] font-bold uppercase tracking-widest opacity-40">Bağlantı Kuruluyor</span>
                 </div>
             </div>
         </div>
-        <button onclick="toggleTheme()" id="themeBtn" class="w-12 h-12 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm">☀️</button>
+        <button onclick="toggleTheme()" id="themeBtn" class="w-12 h-12 bg-zinc-100 dark:bg-darkCard border border-zinc-200 dark:border-darkBorder rounded-2xl text-2xl flex items-center justify-center transition-all">☀️</button>
     </div>
 
     <!-- LANDING -->
     <div id="landing">
         <div class="text-center mb-16">
-            <h2 class="text-6xl md:text-7xl font-black tracking-tighter mb-6 bg-gradient-to-b from-slate-900 to-slate-600 dark:from-white dark:to-zinc-600 bg-clip-text text-transparent">Anında Paylaş.</h2>
-            <p class="text-slate-500 dark:text-zinc-500 text-xl font-medium">Hız, gizlilik ve sınırsız pano transferi.</p>
+            <h2 class="text-6xl md:text-8xl font-black tracking-tighter mb-6 bg-gradient-to-b from-white to-zinc-700 bg-clip-text text-transparent">Anında Paylaş.</h2>
+            <p class="text-zinc-500 text-xl font-medium tracking-tight">Cihazlar arası saf hız ve gizlilik.</p>
         </div>
 
         <div class="grid md:grid-cols-2 gap-8">
-            <div onclick="showCreateModal()" class="glass rounded-[2.5rem] p-10 cursor-pointer hover:border-cyan-500/40 hover:scale-[1.01] transition-all group shadow-2xl">
-                <div class="text-cyan-500 text-xs font-black mb-3 tracking-[0.3em]">START</div>
-                <h3 class="text-3xl font-bold group-hover:text-cyan-400 transition-colors">Oda Oluştur</h3>
-                <p class="text-slate-500 dark:text-zinc-500 mt-2 font-medium">Yeni bir transfer alanı yarat.</p>
+            <div onclick="showCreateModal()" class="glass rounded-[2.5rem] p-10 cursor-pointer hover:border-cyan-500/50 transition-all group">
+                <div class="text-cyan-500 text-xs font-black mb-3 tracking-[0.3em]">NEW ROOM</div>
+                <h3 class="text-3xl font-black group-hover:text-cyan-400">Oda Oluştur</h3>
+                <p class="text-zinc-500 mt-2">Hızlı bir alan yarat.</p>
             </div>
 
-            <div class="glass rounded-[2.5rem] p-10 shadow-2xl">
-                <h3 class="text-2xl font-bold mb-6">Odaya Katıl</h3>
-                <input id="joinRoomId" class="w-full rounded-2xl px-6 py-5 mb-4 outline-none border transition-all font-mono font-bold tracking-widest uppercase text-center" placeholder="KOD">
-                <button onclick="joinRoom()" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-5 rounded-2xl font-black text-lg transition-all shadow-xl shadow-cyan-500/30">KATIL</button>
+            <div class="glass rounded-[2.5rem] p-10">
+                <h3 class="text-2xl font-black mb-6">Odaya Katıl</h3>
+                <input id="joinRoomId" class="w-full rounded-2xl px-6 py-5 mb-4 outline-none border transition-all font-mono font-bold text-center uppercase" placeholder="ODA KODU">
+                <button onclick="joinRoom()" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-5 rounded-2xl font-black text-lg transition-all shadow-xl shadow-cyan-500/20">KATIL</button>
             </div>
         </div>
     </div>
 
     <!-- ROOM SCREEN -->
     <div id="roomScreen" class="hidden">
-        <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 bg-white/40 dark:bg-zinc-900/40 border border-zinc-200/50 dark:border-zinc-800/50 rounded-3xl px-8 py-5 backdrop-blur-xl">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 bg-zinc-100 dark:bg-darkCard border border-zinc-200 dark:border-darkBorder rounded-3xl px-8 py-5">
             <div class="flex items-center gap-4">
-                <span id="roomNameDisplay" class="text-2xl font-bold"></span>
-                <span id="roomIdDisplay" class="font-mono text-cyan-500 bg-cyan-500/10 px-4 py-1.5 rounded-xl text-sm font-black border border-cyan-500/20"></span>
+                <span id="roomNameDisplay" class="text-2xl font-black"></span>
+                <span id="roomIdDisplay" class="font-mono text-cyan-400 bg-cyan-400/10 px-4 py-1.5 rounded-xl text-sm font-black border border-cyan-400/20"></span>
             </div>
             <div class="flex gap-2">
-                <button onclick="showSettingsModal()" class="w-12 h-12 flex items-center justify-center bg-zinc-200/50 dark:bg-zinc-800/50 rounded-xl hover:bg-cyan-500/20 transition-colors">⚙️</button>
-                <button onclick="copyRoomLink()" class="w-12 h-12 flex items-center justify-center bg-zinc-200/50 dark:bg-zinc-800/50 rounded-xl hover:bg-cyan-500/20 transition-colors">🔗</button>
-                <div class="w-[1px] h-8 bg-zinc-300 dark:bg-zinc-800 mx-2 self-center"></div>
-                <button onclick="leaveRoom()" class="px-5 text-red-500 font-bold hover:bg-red-500/10 rounded-xl transition-colors uppercase text-sm tracking-widest">Çıkış</button>
+                <button onclick="showSettingsModal()" class="w-12 h-12 flex items-center justify-center bg-zinc-200 dark:bg-zinc-800 rounded-xl">⚙️</button>
+                <button onclick="copyRoomLink()" class="w-12 h-12 flex items-center justify-center bg-zinc-200 dark:bg-zinc-800 rounded-xl">🔗</button>
+                <button onclick="leaveRoom()" class="px-5 text-red-500 font-black text-xs tracking-widest">ÇIKIŞ</button>
             </div>
         </div>
 
-        <div id="currentContent" class="glass rounded-[3rem] p-10 min-h-[350px] flex flex-col items-center justify-center text-center shadow-2xl mb-10 overflow-hidden border-dashed border-2">
-            <div class="opacity-20 flex flex-col items-center">
-                <div class="text-6xl mb-4">🌑</div>
-                <p class="text-lg font-medium">Veri bekleniyor...</p>
+        <div id="currentContent" class="glass rounded-[3rem] p-10 min-h-[350px] flex flex-col items-center justify-center text-center shadow-2xl mb-10 overflow-hidden border-dashed border-2 border-zinc-900">
+            <div class="opacity-10">
+                <div class="text-7xl mb-4">🌑</div>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div class="lg:col-span-8">
-                <textarea id="textInput" class="w-full rounded-[2.5rem] p-8 outline-none border transition-all min-h-[220px] resize-none shadow-inner text-lg leading-relaxed" placeholder="İçeriği buraya bırakın..."></textarea>
+                <textarea id="textInput" class="w-full rounded-[2.5rem] p-8 outline-none border transition-all min-h-[220px] resize-none text-lg" placeholder="Buraya yazın..."></textarea>
             </div>
             <div class="lg:col-span-4 flex flex-col gap-4">
-                <button onclick="sendText()" class="w-full flex-1 bg-gradient-to-br from-cyan-500 to-teal-600 text-white font-black rounded-[2.5rem] text-2xl shadow-xl shadow-cyan-500/30 hover:brightness-110 active:scale-95 transition-all">PAYLAŞ</button>
+                <button onclick="sendText()" class="w-full flex-1 bg-gradient-to-br from-cyan-500 to-cyan-700 text-white font-black rounded-[2.5rem] text-2xl shadow-xl hover:brightness-110 active:scale-95 transition-all">PAYLAŞ</button>
                 <div class="grid grid-cols-2 gap-4">
-                    <button onclick="pasteAndSend()" class="py-5 border dark:border-zinc-800 rounded-2xl hover:bg-white dark:hover:bg-zinc-900 transition-all font-bold text-sm">📋 Yapıştır</button>
-                    <button onclick="document.getElementById('fileInput').click()" class="py-5 border border-dashed border-cyan-500/50 rounded-2xl hover:bg-cyan-500/5 transition-all font-bold text-sm text-cyan-500">📸 Resim</button>
+                    <button onclick="pasteAndSend()" class="py-5 border dark:border-darkBorder rounded-2xl font-bold text-sm">📋 Yapıştır</button>
+                    <button onclick="document.getElementById('fileInput').click()" class="py-5 border border-dashed border-cyan-500/50 rounded-2xl font-bold text-sm text-cyan-500">📸 Resim</button>
                 </div>
                 <input type="file" id="fileInput" class="hidden" accept="image/*" onchange="sendImage(event)">
             </div>
         </div>
 
         <div class="mt-16">
-            <h3 class="text-xl font-black mb-8 flex items-center gap-3 italic">
-                <span class="w-10 h-[3px] bg-cyan-500 rounded-full"></span>
-                GEÇMİŞ
-            </h3>
+            <h3 class="text-xl font-black mb-8 italic opacity-50">/ GEÇMİŞ</h3>
             <div id="historyList" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-3 custom-scrollbar"></div>
         </div>
     </div>
 </div>
 
 <!-- MODALLAR -->
-<div id="createModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
-    <div class="glass rounded-[2.5rem] p-10 w-full max-w-md shadow-2xl border border-white/5">
-        <h3 class="text-3xl font-black mb-8 tracking-tight">Yeni Bir Alan Aç</h3>
-        <input id="createNameInput" value="Paylaşım Odası" class="w-full rounded-2xl px-6 py-5 mb-8 outline-none border transition-all font-medium text-center">
+<div id="createModal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="glass rounded-[2.5rem] p-10 w-full max-w-md border border-white/5">
+        <h3 class="text-3xl font-black mb-8">Yeni Alan</h3>
+        <input id="createNameInput" value="Paylaşım Odası" class="w-full rounded-2xl px-6 py-5 mb-8 outline-none border font-bold text-center">
         <div class="flex gap-4">
-            <button onclick="hideCreateModal()" class="flex-1 py-5 font-bold text-zinc-500">İptal</button>
-            <button onclick="createRoom()" class="flex-[2] py-5 bg-cyan-500 text-white font-black rounded-2xl hover:bg-cyan-600 shadow-xl transition-all">Oluştur</button>
+            <button onclick="hideCreateModal()" class="flex-1 font-bold text-zinc-500">İptal</button>
+            <button onclick="createRoom()" class="flex-[2] py-5 bg-cyan-500 text-white font-black rounded-2xl">Oluştur</button>
         </div>
     </div>
 </div>
 
-<div id="settingsModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
-    <div class="glass rounded-[2.5rem] p-10 w-full max-w-md shadow-2xl border border-white/5">
-        <h3 class="text-3xl font-black mb-8 tracking-tight">Ayarlar</h3>
-        <label class="text-xs font-black text-zinc-500 ml-2 mb-2 block uppercase tracking-widest">Oda İsmi</label>
-        <input id="settingsNameInput" class="w-full rounded-2xl px-6 py-5 mb-10 outline-none border transition-all font-medium">
+<div id="settingsModal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div class="glass rounded-[2.5rem] p-10 w-full max-w-md border border-white/5">
+        <h3 class="text-3xl font-black mb-8">Ayarlar</h3>
+        <input id="settingsNameInput" class="w-full rounded-2xl px-6 py-5 mb-10 outline-none border font-bold">
         <div class="flex gap-4">
-            <button onclick="hideSettingsModal()" class="flex-1 py-5 font-bold text-zinc-500">Geri</button>
-            <button onclick="saveSettings()" class="flex-[2] py-5 bg-cyan-500 text-white font-black rounded-2xl hover:bg-cyan-600 shadow-xl transition-all">Kaydet</button>
+            <button onclick="hideSettingsModal()" class="flex-1 font-bold text-zinc-500">Geri</button>
+            <button onclick="saveSettings()" class="flex-[2] py-5 bg-cyan-500 text-white font-black rounded-2xl">Kaydet</button>
         </div>
     </div>
 </div>
@@ -181,13 +186,13 @@
             socket = io();
             socket.on('connect', () => {
                 document.getElementById('connStatus').className = 'status-dot online';
-                document.getElementById('statusText').textContent = 'Çevrimiçi';
+                document.getElementById('statusText').textContent = 'ÇEVRİMİÇİ';
                 const saved = localStorage.getItem('lastRoomId');
                 if (saved) socket.emit('joinRoom', { roomId: saved });
             });
             socket.on('disconnect', () => {
                 document.getElementById('connStatus').className = 'status-dot offline';
-                document.getElementById('statusText').textContent = 'Kopuk';
+                document.getElementById('statusText').textContent = 'KOPUK';
             });
             socket.on('roomCreated', ({ roomId }) => {
                 enterRoomUI(roomId, document.getElementById('createNameInput').value);
@@ -259,22 +264,36 @@
         reader.readAsDataURL(file);
     }
 
+    // PANO DÜZELTME (PERMISSION CHECK DAHİL)
+    async function pasteAndSend() {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text) {
+                document.getElementById('textInput').value = text;
+                sendText();
+            } else {
+                alert("Pano boş veya erişim izni yok.");
+            }
+        } catch (err) {
+            alert("Pano okuma izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.");
+        }
+    }
+
     function renderCurrent(data) {
         const container = document.getElementById('currentContent');
         container.innerHTML = '';
-        container.style.borderColor = 'transparent';
         if (data.type === 'text') {
             container.innerHTML = `
-                <div class="w-full max-w-3xl animate-in zoom-in duration-500">
-                    <p class="text-3xl md:text-5xl font-black break-words px-4 mb-12 leading-snug">${data.value}</p>
-                    <button onclick="copyToClipboard('${data.value.replace(/'/g, "\\'")}')" class="bg-zinc-900 dark:bg-white text-white dark:text-black px-12 py-5 rounded-[2rem] font-black shadow-2xl active:scale-90 transition-all uppercase tracking-tighter text-xl">Kopyala</button>
+                <div class="w-full max-w-3xl">
+                    <p class="text-3xl md:text-5xl font-black break-words px-4 mb-12">${data.value}</p>
+                    <button onclick="copyToClipboard('${data.value.replace(/'/g, "\\'")}')" class="bg-white text-black px-12 py-5 rounded-[2rem] font-black shadow-2xl active:scale-90 transition-all uppercase text-xl">Kopyala</button>
                 </div>
             `;
         } else {
             container.innerHTML = `
-                <div class="animate-in zoom-in duration-500">
-                    <img src="${data.value}" class="max-h-[450px] rounded-[2.5rem] shadow-2xl mb-8 border-[6px] border-white dark:border-zinc-800">
-                    <a href="${data.value}" download="ClipShare_${Date.now()}.png" class="inline-block bg-cyan-500 text-white px-10 py-4 rounded-2xl font-black shadow-xl hover:bg-cyan-600 transition-all">İndir</a>
+                <div>
+                    <img src="${data.value}" class="max-h-[450px] rounded-[2.5rem] shadow-2xl mb-8 border-[6px] border-darkCard">
+                    <a href="${data.value}" download="ClipShare_${Date.now()}.png" class="inline-block bg-cyan-500 text-white px-10 py-4 rounded-2xl font-black">İndir</a>
                 </div>
             `;
         }
@@ -283,10 +302,10 @@
     function renderHistory() {
         const list = document.getElementById('historyList');
         list.innerHTML = historyData.map(item => `
-            <div class="glass p-6 rounded-[2rem] flex justify-between items-center border border-zinc-200/40 dark:border-zinc-800/40 hover:border-cyan-500/40 transition-all">
+            <div class="glass p-6 rounded-[2rem] flex justify-between items-center border border-darkBorder group transition-all">
                 <div class="truncate flex-1 mr-4">
-                    <p class="text-[9px] uppercase font-black tracking-[0.2em] mb-1 text-cyan-500">${item.type}</p>
-                    <p class="truncate font-bold text-sm">${item.type === 'text' ? item.value : '📷 Görsel'}</p>
+                    <p class="text-[9px] uppercase font-black tracking-widest mb-1 text-cyan-500">${item.type}</p>
+                    <p class="truncate font-bold text-sm opacity-60">${item.type === 'text' ? item.value : '📷 Görsel'}</p>
                 </div>
                 <button onclick="renderCurrent(${JSON.stringify(item).replace(/"/g, '&quot;')})" class="w-12 h-12 flex items-center justify-center bg-cyan-500/10 text-cyan-500 rounded-2xl hover:bg-cyan-500 hover:text-white transition-all shadow-sm">👁️</button>
             </div>
@@ -295,16 +314,7 @@
 
     function copyToClipboard(val) {
         navigator.clipboard.writeText(val);
-        const btn = event.target;
-        const originalText = btn.textContent;
-        btn.textContent = "KAPILDI!";
-        btn.style.backgroundColor = "#10b981";
-        btn.style.color = "white";
-        setTimeout(() => {
-            btn.textContent = originalText;
-            btn.style.backgroundColor = "";
-            btn.style.color = "";
-        }, 1500);
+        alert("Kopyalandı!");
     }
 
     function copyRoomLink() {
@@ -314,7 +324,7 @@
     }
 
     function leaveRoom() {
-        if (confirm("Odadan çık?")) {
+        if (confirm("Çıkış yapılsın mı?")) {
             localStorage.removeItem('lastRoomId');
             location.reload();
         }
